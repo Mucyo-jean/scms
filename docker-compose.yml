@@ -1,0 +1,61 @@
+name: scms
+
+services:
+  database:
+    container_name: scms-database
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: scms
+      POSTGRES_USER: scms
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-scms}
+    volumes:
+      - scms_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scms -d scms"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    container_name: scms-backend
+    image: scms-backend:latest
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://scms:${POSTGRES_PASSWORD:-scms}@database:5432/scms
+      SECRET_KEY: ${SECRET_KEY:-change-this-secret-before-production}
+      APP_ENV: ${APP_ENV:-development}
+      AUTO_SEED: "true"
+      SERVE_FRONTEND: "false"
+      CORS_ORIGINS: http://localhost:5174,http://127.0.0.1:5174
+      STORAGE_DIR: /app/storage
+    ports:
+      - "8000:8000"
+    volumes:
+      - scms_backend_storage:/app/storage
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  frontend:
+    container_name: scms-frontend
+    image: scms-frontend:latest
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    ports:
+      - "5174:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  scms_postgres_data:
+  scms_backend_storage:

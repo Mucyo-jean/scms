@@ -1,0 +1,15 @@
+# The API image builds from the repository root so it can bundle the Vite build.
+.git
+.gitignore
+.freebuff
+frontend/node_modules
+frontend/dist
+files/
+backend/.venv
+backend/.env
+backend/storage
+backend/*.db
+backend/tests/test_mclears.db
+**/__pycache__
+*.pyc
+.pytest_cache
